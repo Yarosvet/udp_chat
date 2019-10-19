@@ -1,15 +1,30 @@
-import socket, sys
+import socket
+import sys
+from PyQt5 import uic
+from PyQt5.QtWidgets import QApplication, QWidget
 
-serverAddressPort = (input('Введите ip сервера'), int(input('Введите порт приема сообщений сервера')))
+serverAddressPort = (input('Введите ip сервера :>'), int(input('Введите порт приема сообщений сервера :>')))
+print('Отправляйте сообщения.')
+bufferSize = 2048
+UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 
-bufferSize = 1024
-for line in sys.stdin:
-    msgFromClient = line
-    bytesToSend = str.encode(msgFromClient)
-    # Create a UDP socket at client side
-    UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-    # Send to server using created UDP socket
-    UDPClientSocket.sendto(bytesToSend, serverAddressPort)
+
+def send(msgFromClient):
+    global UDPClientSocket
+    UDPClientSocket.sendto(str.encode(msgFromClient), serverAddressPort)
     msgFromServer = UDPClientSocket.recvfrom(bufferSize)
     msg = "{}: {}".format(serverAddressPort[0], msgFromServer[0].decode('utf-8'))
     print(msg)
+
+
+class Example(QWidget):
+    def __init__(self):
+        super().__init__()
+        uic.loadUi('client.ui', self)
+
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = Example()
+    ex.show()
+    sys.exit(app.exec())
