@@ -9,7 +9,7 @@ bytesToSend = str.encode(msgFromServer)
 UDPServerSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 # Bind to address and ip
 UDPServerSocket.bind((localIP, localPort))
-print("Сервер запущен.")
+print("Сервер запущен. IP - {}".format(localIP))
 # Listen for incoming datagram
 # def wait_message(socket):
 while True:

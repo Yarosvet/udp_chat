@@ -1,4 +1,5 @@
 import socket, sys
+
 serverAddressPort = (input('Введите ip сервера'), int(input('Введите порт приема сообщений сервера')))
 
 bufferSize = 1024
