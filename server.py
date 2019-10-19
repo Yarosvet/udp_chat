@@ -1,7 +1,7 @@
 import socket
 
 
-localIP = input('({}) Введите ip сервера'.format(socket.gethostbyname(socket.getfqdn())))
+localIP = input('Введите ip сервера (0 - {})'.format(socket.gethostbyname(socket.getfqdn())))
 localPort = 20001
 bufferSize = 1024
 msgFromServer = "Received."
