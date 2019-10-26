@@ -25,6 +25,7 @@ class MyWidget(QMainWindow):
             text += b' '
         return text
 
+
     def encrypt(self, text, key):
         key = self.pad(key)
         des = DES.new(key, DES.MODE_ECB)
