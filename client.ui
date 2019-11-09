@@ -152,8 +152,8 @@
       </layout>
      </item>
      <item>
-      <widget class="QTextBrowser" name="textBrowser">
-       <property name="enabled">
+      <widget class="QPlainTextEdit" name="plainText">
+       <property name="readOnly">
         <bool>true</bool>
        </property>
       </widget>
