@@ -3,15 +3,11 @@ import socket
 import sys, select
 import time
 import threading
+from simple_thread import SimpleThread
 from PyQt5 import uic
+import sqlite3
+from PyQt5.QtCore import QThread
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QErrorMessage
-
-
-class StoppableThread(threading.Thread):
-    #  Thread class with a stop() method.
-    def __init__(self, *args, **kwargs):
-        super(StoppableThread, self).__init__(*args, **kwargs)
-        self._stop_event = Event()
 
 
 class MyWidget(QMainWindow):
@@ -20,50 +16,70 @@ class MyWidget(QMainWindow):
         uic.loadUi('client.ui', self)
         self.localIP = socket.gethostbyname(socket.getfqdn())
         self.pushButton.clicked.connect(self.run)
+        self.pushButton_2.clicked.connect(self.change_socket)
         self.lineEdit_9.setText(self.localIP)
-        host = self.lineEdit_4
+
+        self.con = sqlite3.connect("messages.db")
+        self.cur = self.con.cursor()
+
+        host = self.lineEdit_4.text()
         port = int(self.lineEdit_6.text())
 
-        self.send_address = (host, port)  # Set the address to send to
+        self.send_address = (host, port)  # Set the address
         self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # Create Socket
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Make Socket Reusable
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)  # Allow incoming broadcasts
+        self.s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
         self.s.setblocking(False)  # Socket non-block
         self.s.bind(('', port))  # Binding port
+        self.text_on_browser = ''
+        # self.thr = QThread()
+        # self.thr.started.connect(self.main)
+        # self.thr.thread(self)
+        # self.thr.start()
+        self.main(thr_start=True)
 
-    # def main(self):
-    #     while True:
-    #         time.sleep(1)
-    #         try:
-    #             message, address = self.s.recvfrom(1024)  # Buffer size
-    #             if message:
-    #                 self.show(address + " >  " + message)  # Show this message
-    #         except:
-    #             pass
+    def change_socket(self):
+        host = self.lineEdit_4.text()
+        port = int(self.lineEdit_6.text())
+        self.send_address = (host, port)  # Set the address
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # Create Socket
+        self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Make Socket Reusable
+        self.s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)  # Allow incoming broadcasts
+        self.s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
+        self.s.setblocking(False)  # Socket non-block
+        self.s.bind((self.lineEdit_9.text(), port))
+
+    @SimpleThread
+    def main(self):
+        while True:
+            try:
+                message, address = self.s.recvfrom(1024)  # Buffer size
+                message = message.decode('utf-8')
+                print('decoded')
+                text = str(address) + " >  " + message
+                self.show_message(text)
+                self.log_db(address, self.send_address[1], message)
+            except:
+                pass
 
     def run(self):
-        input = self.lineEdit.text()
+        input = str(self.lineEdit.text())
         if (input != ''):
-            self.s.sendto(input, self.send_address)
-            self.show('Me >  ' + input)
+            self.s.sendto(bytes(input, 'utf-8'), self.send_address)  # sending text
+            self.show_message('Me >  ' + input)  # Show this message
+            self.log_db(self.lineEdit_9.text() + ' (Me)', self.send_address[1], input)
 
-    def show(self, text):
-        self.textBrowser.setText(self.textBrowser.setText() + '\n' + text)
+    def show_message(self, text):
+        self.text_on_browser += '\n' + text
+        self.textBrowser.setText(self.text_on_browser)
+
+    def log_db(self, ip, port, message):
+        self.cur.execute(f"INSERT INTO messages(Ip, Port, Text) VALUES(\'{ip}\', {port}, \'{message}\')")
+        self.con.commit()
+
 
 app = QApplication(sys.argv)
 ex = MyWidget()
-
-def main():
-    global ex
-    while True:
-        time.sleep(1)
-        try:
-            message, address = ex.s.recvfrom(1024)  # Buffer size
-            if message:
-                ex.show(address + " >  " + message)  # Show this message
-        except:
-            pass
-
-thr = threading.Thread(main)
 ex.show()
 sys.exit(app.exec_())
