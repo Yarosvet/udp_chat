@@ -19,7 +19,7 @@ class MyWidget(QMainWindow):
         self.pushButton_2.clicked.connect(self.change_socket)
         self.lineEdit_9.setText(self.localIP)
 
-        self.con = sqlite3.connect("messages.db") #  Database
+        self.con = sqlite3.connect("messages.db")  # Database
         self.cur = self.con.cursor()
 
         host = self.lineEdit_4.text()
@@ -57,7 +57,7 @@ class MyWidget(QMainWindow):
                 time.sleep(0.1)
                 message, address = self.s.recvfrom(1024)  # Buffer size
                 message = message.decode('utf-8')
-                self.plainText.appendPlainText(f'{address[0]}:{address[1]} >  {message}') #  printing message
+                self.plainText.appendPlainText(f'{address[0]}:{address[1]} >  {message}')  # printing message
                 self.log_db(address, self.send_address[1], message)
             except:
                 pass
