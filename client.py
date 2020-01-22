@@ -3,23 +3,25 @@ import socket
 import sys, select
 import time
 import threading
-# from simple_thread import SimpleThread
+from pickle import loads, dumps
+# Qt and sql
 from PyQt5 import uic
 import sqlite3
-from PyQt5.QtCore import QThread
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QErrorMessage
 
 
 class MyWidget(QMainWindow):
     def __init__(self):
         super().__init__()
+        # Инициализация окна
         uic.loadUi('client.ui', self)
         self.localIP = socket.gethostbyname(socket.getfqdn())
-        self.pushButton.clicked.connect(self.run)
+        self.pushButton.clicked.connect(self.send_message)
         self.pushButton_2.clicked.connect(self.change_socket)
         self.lineEdit_9.setText(self.localIP)
 
-        self.con = sqlite3.connect("messages.db")  # Database
+        # Database
+        self.con = sqlite3.connect("messages.db")
         self.cur = self.con.cursor()
 
         host = self.lineEdit_4.text()
@@ -34,11 +36,6 @@ class MyWidget(QMainWindow):
         self.s.bind(('', port))  # Binding port
         thr = threading.Thread(target=self.main)
         thr.start()
-        # self.thr = QThread()
-        # self.thr.started.connect(self.main)
-        # self.thr.thread(self)
-        # self.thr.start()
-        # self.main(thr_start=True)
 
     def change_socket(self):
         host = self.lineEdit_4.text()
@@ -56,17 +53,20 @@ class MyWidget(QMainWindow):
             try:
                 time.sleep(0.1)
                 message, address = self.s.recvfrom(1024)  # Buffer size
-                message = message.decode('utf-8')
-                self.plainText.appendPlainText(f'{address[0]}:{address[1]} >  {message}')  # printing message
-                self.log_db(address, self.send_address[1], message)
+                request = loads(message)
+                if request['type'] == 'message':
+                    text = request['text']
+                    self.plainText.appendPlainText(f'{address[0]}:{address[1]} >  {text}')  # printing message
+                    self.log_db(address, self.send_address[1], text)
             except:
                 pass
 
-    def run(self):
+    def send_message(self):
         self.send_address = (self.lineEdit_4.text(), int(self.lineEdit_6.text()))
         input = str(self.lineEdit.text())
         if (input != ''):
-            self.s.sendto(bytes(input, 'utf-8'), self.send_address)  # sending text
+            request = {'type': 'message', 'text': input}
+            self.s.sendto(dumps(request), self.send_address)  # sending text
             self.plainText.appendPlainText('Me >  ' + input)  # Show this message
             self.log_db(self.lineEdit_9.text() + ' (Me)', self.send_address[1], input)
 
