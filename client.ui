@@ -76,7 +76,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLineEdit" name="lineEdit_9"/>
+        <widget class="QLineEdit" name="local_ip"/>
        </item>
       </layout>
      </item>
@@ -99,7 +99,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLineEdit" name="lineEdit_6">
+        <widget class="QLineEdit" name="port">
          <property name="text">
           <string>20001</string>
          </property>
@@ -133,7 +133,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLineEdit" name="lineEdit_4"/>
+        <widget class="QLineEdit" name="reciever_ip"/>
        </item>
       </layout>
      </item>
