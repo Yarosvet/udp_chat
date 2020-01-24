@@ -7,7 +7,8 @@ from pickle import loads, dumps
 import rsa
 # Qt
 from PyQt5 import uic
-from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QErrorMessage
+from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtCore import Qt
 
 
 def encrypt(message, public):
@@ -64,6 +65,10 @@ class MyWidget(QMainWindow):
             self.s.sendto(dumps(request), send_address)
         except socket.gaierror:
             pass
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Enter - 1:
+            self.send_message()
 
     def main(self):
         while True:
