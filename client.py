@@ -10,6 +10,7 @@ import rsa
 from PyQt5 import uic
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QFileDialog
 
 
 def encrypt(message, public):
@@ -31,6 +32,7 @@ class MyWidget(QMainWindow):
         self.pushButton_2.clicked.connect(self.change_socket)
         self.reciever_ip.textChanged.connect(self.reconnect)
         self.local_ip.setText(self.localIP)
+        self.send_file.clicked.connect(self.file_sender)
 
         host = self.reciever_ip.text()
         port = int(self.port.text())
@@ -47,6 +49,19 @@ class MyWidget(QMainWindow):
         self.s.bind(('', port))  # Binding port
         thr = threading.Thread(target=self.main)
         thr.start()
+
+    def file_sender(self):
+        fname = QFileDialog.getOpenFileName(self, 'Выбрать файл', '')[0]
+        if fname != '':
+            request = {'type': 'connect', 'data': {'pubkey': self.pubkey, 'need_for_answer': 'True'}}
+            self.s.sendto(dumps(request), (self.reciever_ip.text(), int(self.port.text())))
+            f = open(fname, 'rb')
+            data = f.read()
+            f.close()
+            encrypted = encrypt(data, self.pubkeys[self.send_address[0]])
+            request = {'type': 'file', 'data': encrypted}
+            self.s.sendto(dumps(request), self.send_address)
+            self.plainText.appendPlainText('Me >  [File ' + fname + ']')
 
     def change_socket(self):
         host = self.reciever_ip.text()
@@ -85,6 +100,7 @@ class MyWidget(QMainWindow):
                     data = loads(decrypt(request['data'], self.privkey))
                     text = data['text']
                     self.plainText.appendPlainText(f'{address[0]}:{address[1]} >  {text}')  # printing message
+
                 elif request['type'] == 'connect':
                     if address[0] == '127.0.0.1':
                         self.pubkeys['127.0.1.1'] = request['data']['pubkey']
@@ -101,8 +117,8 @@ class MyWidget(QMainWindow):
         request = {'type': 'connect', 'data': {'pubkey': self.pubkey, 'need_for_answer': 'True'}}
         self.s.sendto(dumps(request), self.send_address)
         if text != '':
-            crypted = encrypt(dumps({'text': text}), self.pubkeys[self.send_address[0]])
-            request = {'type': 'message', 'data': crypted}
+            encrypted = encrypt(dumps({'text': text}), self.pubkeys[self.send_address[0]])
+            request = {'type': 'message', 'data': encrypted}
             self.s.sendto(dumps(request), self.send_address)  # sending text
             self.plainText.appendPlainText('Me >  ' + text)  # Show this message
             self.lineEdit.setText('')
