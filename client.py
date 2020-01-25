@@ -96,17 +96,14 @@ class MyWidget(QMainWindow):
 
     def send_message(self):
         self.send_address = (self.reciever_ip.text(), int(self.port.text()))
-        input = str(self.lineEdit.text())
+        text = str(self.lineEdit.text())
         request = {'type': 'connect', 'data': {'pubkey': self.pubkey, 'need_for_answer': 'True'}}
         self.s.sendto(dumps(request), self.send_address)
-        try:
-            if input != '':
-                crypted = encrypt(dumps({'text': input}), self.pubkeys[self.send_address[0]])
-                request = {'type': 'message', 'data': crypted}
-                self.s.sendto(dumps(request), self.send_address)  # sending text
-                self.plainText.appendPlainText('Me >  ' + input)  # Show this message
-        except:
-            pass
+        if text != '':
+            crypted = encrypt(dumps({'text': text}), self.pubkeys[self.send_address[0]])
+            request = {'type': 'message', 'data': crypted}
+            self.s.sendto(dumps(request), self.send_address)  # sending text
+            self.plainText.appendPlainText('Me >  ' + text)  # Show this message
 
 
 app = QApplication(sys.argv)
