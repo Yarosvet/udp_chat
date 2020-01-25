@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import socket
-import sys, select
+import sys
+# import select
 import time
 import threading
 from pickle import loads, dumps
@@ -104,6 +105,7 @@ class MyWidget(QMainWindow):
             request = {'type': 'message', 'data': crypted}
             self.s.sendto(dumps(request), self.send_address)  # sending text
             self.plainText.appendPlainText('Me >  ' + text)  # Show this message
+            self.lineEdit.setText('')
 
 
 app = QApplication(sys.argv)
