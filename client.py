@@ -11,6 +11,7 @@ from PyQt5 import uic
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtCore import QTimer
 
 
 def encrypt(message, public):
@@ -23,9 +24,14 @@ def decrypt(message, private):
 
 class MyWidget(QMainWindow):
     def __init__(self):
-        self.was_visible = False
         super().__init__()
         # Инициализация окна
+
+        timer = QTimer(self)
+        timer.setInterval(100)
+        timer.timeout.connect(self.main)
+        timer.start()
+
         uic.loadUi('client.ui', self)
         self.localIP = socket.gethostbyname(socket.getfqdn())
         self.pushButton.clicked.connect(self.send_message)
@@ -47,8 +53,6 @@ class MyWidget(QMainWindow):
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
         self.s.setblocking(False)  # Socket non-block
         self.s.bind(('', port))  # Binding port
-        thr = threading.Thread(target=self.main)
-        thr.start()
 
     def file_sender(self):
         fname = QFileDialog.getOpenFileName(self, 'Выбрать файл', '')[0]
@@ -87,29 +91,23 @@ class MyWidget(QMainWindow):
             self.send_message()
 
     def main(self):
-        while True:
-            if not self.isVisible() and self.was_visible:
-                break
-            else:
-                self.was_visible = True
-            try:
-                time.sleep(0.1)
-                message, address = self.s.recvfrom(1024)  # Buffer size
-                request = loads(message)
-                if request['type'] == 'message':
-                    data = loads(decrypt(request['data'], self.privkey))
-                    text = data['text']
-                    self.plainText.appendPlainText(f'{address[0]}:{address[1]} >  {text}')  # printing message
+        try:
+            message, address = self.s.recvfrom(1024)  # Buffer size
+            request = loads(message)
+            if request['type'] == 'message':
+                data = loads(decrypt(request['data'], self.privkey))
+                text = data['text']
+                self.plainText.appendPlainText(f'{address[0]}:{address[1]} >  {text}')  # printing message
 
-                elif request['type'] == 'connect':
-                    if address[0] == '127.0.0.1':
-                        self.pubkeys['127.0.1.1'] = request['data']['pubkey']
-                    self.pubkeys[address[0]] = request['data']['pubkey']
-                    if request['data']['need_for_answer'] == 'True':
-                        request = {'type': 'connect', 'data': {'pubkey': self.pubkey, 'need_for_answer': 'False'}}
-                        self.s.sendto(dumps(request), address)
-            except BlockingIOError:
-                pass
+            elif request['type'] == 'connect':
+                if address[0] == '127.0.0.1':
+                    self.pubkeys['127.0.1.1'] = request['data']['pubkey']
+                self.pubkeys[address[0]] = request['data']['pubkey']
+                if request['data']['need_for_answer'] == 'True':
+                    request = {'type': 'connect', 'data': {'pubkey': self.pubkey, 'need_for_answer': 'False'}}
+                    self.s.sendto(dumps(request), address)
+        except BlockingIOError:
+            pass
 
     def send_message(self):
         self.send_address = (self.reciever_ip.text(), int(self.port.text()))
