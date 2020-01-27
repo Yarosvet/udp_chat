@@ -151,6 +151,9 @@
          <property name="text">
           <string/>
          </property>
+         <property name="maxLength">
+          <number>2048</number>
+         </property>
         </widget>
        </item>
        <item>
