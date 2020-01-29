@@ -103,7 +103,7 @@ class MyWidget(QMainWindow):
         request['request_id'] = self.message_id
         data = request['data']
         cnt = len(data) // pieces
-        if cnt % pieces != 0:
+        if len(data) % pieces != 0:
             cnt += 1
         request['count_of_packets'] = cnt
         for i in range(cnt):
@@ -128,7 +128,7 @@ class MyWidget(QMainWindow):
         try:
             message, address = self.s.recvfrom(1024)  # Buffer size
             request = loads(message)
-            print(request)
+
             if request['type'] == 'message':
                 if address[0] not in self.temporary.keys() or \
                         request['request_id'] not in self.temporary[address[0]].keys():
