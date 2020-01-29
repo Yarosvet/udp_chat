@@ -46,6 +46,9 @@ class MyWidget(QMainWindow):
         timer.timeout.connect(self.main)
         timer.start()
 
+        self.message_id = 0
+        self.temporary = {}
+
         uic.loadUi('client.ui', self)
         self.localIP = socket.gethostbyname(socket.getfqdn())
         self.pushButton.clicked.connect(self.send_message)
@@ -80,7 +83,7 @@ class MyWidget(QMainWindow):
             encrypted = prepare_bytes_encrypt(dumps({'file': data, 'file_name': fname}),
                                               self.pubkeys[self.send_address[0]])
             request = {'type': 'file', 'data': encrypted}
-            self.s.sendto(dumps(request), self.send_address)
+            self.sender_message(request)
             self.plainText.appendPlainText('Me >  [File ' + fname + ']')
 
     def change_socket(self):
@@ -94,8 +97,20 @@ class MyWidget(QMainWindow):
         self.s.setblocking(False)  # Socket non-block
         self.s.bind((self.local_ip.text(), port))
 
-    def sender(self, dump):
-        pass
+    def sender_message(self, request):
+        pieces = 3
+        request['ip'] = self.send_address[0]
+        request['request_id'] = self.message_id
+        data = request['data']
+        cnt = len(data) // pieces
+        if cnt % pieces != 0:
+            cnt += 1
+        request['count_of_packets'] = cnt
+        for i in range(cnt):
+            packet = request
+            packet['packet_number'] = i + 1
+            packet['data'] = data[pieces * i: pieces * (i + 1)]
+            self.s.sendto(dumps(packet), self.send_address)
 
     def reconnect(self):
         try:
@@ -115,9 +130,16 @@ class MyWidget(QMainWindow):
             request = loads(message)
             print(request)
             if request['type'] == 'message':
-                data = loads(prepare_bytes_decrypt(request['data'], self.privkey))
-                text = data['text']
-                self.plainText.appendPlainText(f'{address[0]}:{address[1]} >  {text}')  # printing message
+                if address[0] not in self.temporary.keys() or \
+                        request['request_id'] not in self.temporary[address[0]].keys():
+                    self.temporary[address[0]][request['request_id']] = []
+                self.temporary[address[0]][request['request_id']].append(request)
+                if len(self.temporary[address[0]]['request_id']) == request['request_id'] == request[
+                    'count_of_packets']:
+                    data = loads(prepare_bytes_decrypt(self.temporary[address[0]][request['request_id']], self.privkey))
+                    self.temporary[address[0]][request['request_id']] = []
+                    text = data['text']
+                    self.plainText.appendPlainText(f'{address[0]}:{address[1]} >  {text}')  # printing message
 
             elif request['type'] == 'connect':
                 if address[0] == '127.0.0.1':
@@ -128,13 +150,20 @@ class MyWidget(QMainWindow):
                     self.s.sendto(dumps(request), address)
 
             elif request['type'] == 'file':
-                decrypted = loads(prepare_bytes_decrypt(request['data'], self.privkey))
-                fname = QFileDialog.getSaveFileName(self, 'Сохранить файл ' + decrypted['file_name'])[0]
-                if fname != '':
-                    f = open(fname, 'wb')
-                    f.write(decrypted['file'])
-                    f.close()
-                    self.plainText.appendPlainText(f'{address[0]}:{address[1]} >  [File {fname}]')
+                if address[0] not in self.temporary.keys() or \
+                        request['request_id'] not in self.temporary[address[0]].keys():
+                    self.temporary[address[0]][request['request_id']] = []
+                self.temporary[address[0]][request['request_id']].append(request)
+                if len(self.temporary[address[0]]['request_id']) == request['request_id'] == request[
+                    'count_of_packets']:
+                    decrypted = loads(prepare_bytes_decrypt(request['data'], self.privkey))
+                    self.temporary[address[0]][request['request_id']] = []
+                    fname = QFileDialog.getSaveFileName(self, 'Сохранить файл ' + decrypted['file_name'])[0]
+                    if fname != '':
+                        f = open(fname, 'wb')
+                        f.write(decrypted['file'])
+                        f.close()
+                        self.plainText.appendPlainText(f'{address[0]}:{address[1]} >  [File {fname}]')
         except BlockingIOError:
             pass
 
@@ -146,7 +175,7 @@ class MyWidget(QMainWindow):
         if text != '' and self.reciever_ip.text().count('.') == 3:
             encrypted = prepare_bytes_encrypt(dumps({'text': text}), self.pubkeys[self.send_address[0]])
             request = {'type': 'message', 'data': encrypted}
-            self.s.sendto(dumps(request), self.send_address)  # sending text
+            self.sender_message(request)  # sending text
             self.plainText.appendPlainText('Me >  ' + text)  # Show this message
             self.lineEdit.setText('')
 
