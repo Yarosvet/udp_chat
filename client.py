@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 import socket
 import sys
-# import select
-import time
-import threading
 from pickle import loads, dumps
 import rsa
 # Qt
@@ -14,25 +11,18 @@ from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtCore import QTimer
 
 
-def encrypt(message, public):
-    return rsa.encrypt(message, public)
-
-
-def decrypt(message, private):
-    return rsa.decrypt(message, private)
-
-
 def prepare_bytes_encrypt(bytes_list, public_key, piece=117):
     l = len(bytes_list)
     k = l // piece
     last = bytes_list[k * piece:]
-    return [encrypt(bytes_list[piece * i:piece * (i + 1)], public_key) for i in range(k)] + [encrypt(last, public_key)]
+    return [rsa.encrypt(bytes_list[piece * i:piece * (i + 1)], public_key) for i in range(k)] + [
+        rsa.encrypt(last, public_key)]
 
 
 def prepare_bytes_decrypt(crypted_list, privkey):
     res = bytes()
     for el in crypted_list:
-        res += decrypt(el, privkey)
+        res += rsa.decrypt(el, privkey)
     return res
 
 
