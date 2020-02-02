@@ -42,7 +42,7 @@ class MyWidget(QMainWindow):
         # Инициализация окна
 
         timer = QTimer(self)
-        timer.setInterval(100)
+        timer.setInterval(50)
         timer.timeout.connect(self.main)
         timer.start()
 
@@ -85,6 +85,7 @@ class MyWidget(QMainWindow):
             request = {'type': 'file', 'data': encrypted}
             self.sender_message(request)
             self.plainText.appendPlainText('Me >  [File ' + fname + ']')
+            self.message_id += 1
 
     def change_socket(self):
         host = self.reciever_ip.text()
@@ -98,7 +99,7 @@ class MyWidget(QMainWindow):
         self.s.bind((self.local_ip.text(), port))
 
     def sender_message(self, request):
-        pieces = 3
+        pieces = 6
         request['ip'] = self.send_address[0]
         request['request_id'] = self.message_id
         data = request['data']
@@ -128,18 +129,26 @@ class MyWidget(QMainWindow):
         try:
             message, address = self.s.recvfrom(1024)  # Buffer size
             request = loads(message)
-
             if request['type'] == 'message':
-                if address[0] not in self.temporary.keys() or \
-                        request['request_id'] not in self.temporary[address[0]].keys():
-                    self.temporary[address[0]][request['request_id']] = []
-                self.temporary[address[0]][request['request_id']].append(request)
-                if len(self.temporary[address[0]]['request_id']) == request['request_id'] == request[
-                    'count_of_packets']:
-                    data = loads(prepare_bytes_decrypt(self.temporary[address[0]][request['request_id']], self.privkey))
+                request_id = request['request_id']
+                if address[0] not in self.temporary.keys():
+                    self.temporary[address[0]] = {}
+                if request['request_id'] not in self.temporary[address[0]]:
+                    self.temporary[address[0]][request_id] = {}
+                try:
+                    maximum = max(self.temporary[address[0]][request_id].keys()) + 1
+                except ValueError:
+                    maximum = 0
+                self.temporary[address[0]][request_id][maximum] = request['data']
+                if len(self.temporary[address[0]][request_id].keys()) == request['count_of_packets']:
+                    data = []
+                    for el in self.temporary[address[0]][request_id].values():
+                        data += el
+                    del self.temporary[address[0]][request_id]
+                    data = loads(prepare_bytes_decrypt(data, self.privkey))
                     self.temporary[address[0]][request['request_id']] = []
                     text = data['text']
-                    self.plainText.appendPlainText(f'{address[0]}:{address[1]} >  {text}')  # printing message
+                    self.plainText.appendPlainText(f'{address[0]}:{address[1]} >  {text}')
 
             elif request['type'] == 'connect':
                 if address[0] == '127.0.0.1':
@@ -150,14 +159,22 @@ class MyWidget(QMainWindow):
                     self.s.sendto(dumps(request), address)
 
             elif request['type'] == 'file':
-                if address[0] not in self.temporary.keys() or \
-                        request['request_id'] not in self.temporary[address[0]].keys():
-                    self.temporary[address[0]][request['request_id']] = []
-                self.temporary[address[0]][request['request_id']].append(request)
-                if len(self.temporary[address[0]]['request_id']) == request['request_id'] == request[
-                    'count_of_packets']:
+                request_id = request['request_id']
+                if address[0] not in self.temporary.keys():
+                    self.temporary[address[0]] = {}
+                if request['request_id'] not in self.temporary[address[0]]:
+                    self.temporary[address[0]][request_id] = {}
+                try:
+                    maximum = max(self.temporary[address[0]][request_id].keys()) + 1
+                except ValueError:
+                    maximum = 0
+                self.temporary[address[0]][request_id][maximum] = request['data']
+                if len(self.temporary[address[0]][request_id].keys()) == request['count_of_packets']:
+                    data = []
+                    for el in self.temporary[address[0]][request_id].values():
+                        data += el
+                    del self.temporary[address[0]][request_id]
                     decrypted = loads(prepare_bytes_decrypt(request['data'], self.privkey))
-                    self.temporary[address[0]][request['request_id']] = []
                     fname = QFileDialog.getSaveFileName(self, 'Сохранить файл ' + decrypted['file_name'])[0]
                     if fname != '':
                         f = open(fname, 'wb')
@@ -178,6 +195,7 @@ class MyWidget(QMainWindow):
             self.sender_message(request)  # sending text
             self.plainText.appendPlainText('Me >  ' + text)  # Show this message
             self.lineEdit.setText('')
+            self.message_id += 1
 
 
 app = QApplication(sys.argv)
