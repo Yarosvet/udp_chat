@@ -89,7 +89,7 @@ class MyWidget(QMainWindow):
         self.s.bind((self.local_ip.text(), port))
 
     def sender_message(self, request):
-        pieces = 6
+        pieces = 5
         request['ip'] = self.send_address[0]
         request['request_id'] = self.message_id
         data = request['data']
@@ -164,7 +164,7 @@ class MyWidget(QMainWindow):
                     for el in self.temporary[address[0]][request_id].values():
                         data += el
                     del self.temporary[address[0]][request_id]
-                    decrypted = loads(prepare_bytes_decrypt(request['data'], self.privkey))
+                    decrypted = loads(prepare_bytes_decrypt(data, self.privkey))
                     fname = QFileDialog.getSaveFileName(self, 'Сохранить файл ' + decrypted['file_name'])[0]
                     if fname != '':
                         f = open(fname, 'wb')
