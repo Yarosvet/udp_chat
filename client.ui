@@ -125,7 +125,7 @@
        <item>
         <widget class="QLabel" name="label_4">
          <property name="text">
-          <string>Reciever/Server IP</string>
+          <string>Reciever IP</string>
          </property>
          <property name="margin">
           <number>5</number>
