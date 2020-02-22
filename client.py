@@ -4,7 +4,8 @@ import sys
 from pickle import loads, dumps
 import rsa
 # Qt
-from PyQt5 import uic
+# from PyQt5 import uic
+from ui import Ui_Window
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog
 from PyQt5.QtCore import Qt, QTimer
 
@@ -27,6 +28,10 @@ def prepare_bytes_decrypt(crypted_list, privkey):
 class MyWidget(QMainWindow):
     def __init__(self):
         super().__init__()
+        # self.ui = self
+        # uic.loadUi('client.ui', self)
+        self.ui = Ui_Window()
+        self.ui.setupUi(self)
         # Инициализация окна
 
         timer = QTimer(self)
@@ -37,16 +42,15 @@ class MyWidget(QMainWindow):
         self.message_id = 0
         self.temporary = {}
 
-        uic.loadUi('client.ui', self)
         self.localIP = socket.gethostbyname(socket.getfqdn())
-        self.pushButton.clicked.connect(self.send_message)
-        self.pushButton_2.clicked.connect(self.change_socket)
-        self.reciever_ip.textChanged.connect(self.reconnect)
-        self.local_ip.setText(self.localIP)
-        self.send_file.clicked.connect(self.file_sender)
+        self.ui.pushButton.clicked.connect(self.send_message)
+        self.ui.pushButton_2.clicked.connect(self.change_socket)
+        self.ui.reciever_ip.textChanged.connect(self.reconnect)
+        self.ui.local_ip.setText(self.localIP)
+        self.ui.send_file.clicked.connect(self.file_sender)
 
-        host = self.reciever_ip.text()
-        port = int(self.port.text())
+        host = self.ui.reciever_ip.text()
+        port = int(self.ui.port.text())
 
         (self.pubkey, self.privkey) = rsa.newkeys(1024)
         self.pubkeys = {}
@@ -61,10 +65,10 @@ class MyWidget(QMainWindow):
 
     def file_sender(self):
         fname = QFileDialog.getOpenFileName(self, 'Выбрать файл', '')[0]
-        self.send_address = (self.reciever_ip.text(), int(self.port.text()))
-        if fname != '' and self.reciever_ip.text().count('.') == 3:
+        self.send_address = (self.ui.reciever_ip.text(), int(self.ui.port.text()))
+        if fname != '' and self.ui.reciever_ip.text().count('.') == 3:
             request = {'type': 'connect', 'data': {'pubkey': self.pubkey, 'need_for_answer': 'True'}}
-            self.s.sendto(dumps(request), (self.reciever_ip.text(), int(self.port.text())))
+            self.s.sendto(dumps(request), (self.ui.reciever_ip.text(), int(self.ui.port.text())))
             f = open(fname, 'rb')
             data = f.read()
             f.close()
@@ -72,19 +76,19 @@ class MyWidget(QMainWindow):
                                               self.pubkeys[self.send_address[0]])
             request = {'type': 'file', 'data': encrypted}
             self.sender_message(request)
-            self.plainText.appendPlainText('Me >  [File ' + fname + ']')
+            self.ui.plainText.appendPlainText('Me >  [File ' + fname + ']')
             self.message_id += 1
 
     def change_socket(self):
-        host = self.reciever_ip.text()
-        port = int(self.port.text())
+        host = self.ui.reciever_ip.text()
+        port = int(self.ui.port.text())
         self.send_address = (host, port)  # Set the address
         self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # Create Socket
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Make Socket Reusable
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)  # Allow incoming broadcasts
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
         self.s.setblocking(False)  # Socket non-block
-        self.s.bind((self.local_ip.text(), port))
+        self.s.bind((self.ui.local_ip.text(), port))
 
     def sender_message(self, request):
         pieces = 5
@@ -102,15 +106,16 @@ class MyWidget(QMainWindow):
             self.s.sendto(dumps(packet), self.send_address)
 
     def reconnect(self):
-        try:
-            send_address = (self.reciever_ip.text(), int(self.port.text()))
-            request = {'type': 'connect', 'data': {'pubkey': self.pubkey, 'need_for_answer': 'True'}}
-            self.s.sendto(dumps(request), send_address)
-        except socket.gaierror:
-            pass
+        if self.ui.reciever_ip.text().count('.') == 3:
+            try:
+                send_address = (self.ui.reciever_ip.text(), int(self.ui.port.text()))
+                request = {'type': 'connect', 'data': {'pubkey': self.pubkey, 'need_for_answer': 'True'}}
+                self.s.sendto(dumps(request), send_address)
+            except socket.gaierror:
+                pass
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Enter - 1 and self.reciever_ip.text().count('.') == 3:
+        if event.key() == Qt.Key_Enter - 1 and self.ui.reciever_ip.text().count('.') == 3:
             self.send_message()
 
     def main(self):
@@ -136,7 +141,7 @@ class MyWidget(QMainWindow):
                     data = loads(prepare_bytes_decrypt(data, self.privkey))
                     self.temporary[address[0]][request['request_id']] = []
                     text = data['text']
-                    self.plainText.appendPlainText(f'{address[0]}:{address[1]} >  {text}')
+                    self.ui.plainText.appendPlainText(address[0] + ':' + str(address[1]) + ' >  ' + text)
 
             elif request['type'] == 'connect':
                 if address[0] == '127.0.0.1':
@@ -168,21 +173,21 @@ class MyWidget(QMainWindow):
                         f = open(fname, 'wb')
                         f.write(decrypted['file'])
                         f.close()
-                        self.plainText.appendPlainText(f'{address[0]}:{address[1]} >  [File {fname}]')
+                        self.ui.plainText.appendPlainText(address[0] + ':' + address[1] + ' >  [File ' + fname + ']')
         except BlockingIOError:
             pass
 
     def send_message(self):
-        self.send_address = (self.reciever_ip.text(), int(self.port.text()))
-        text = str(self.lineEdit.text())
+        self.send_address = (self.ui.reciever_ip.text(), int(self.ui.port.text()))
+        text = str(self.ui.lineEdit.text())
         request = {'type': 'connect', 'data': {'pubkey': self.pubkey, 'need_for_answer': 'True'}}
         self.s.sendto(dumps(request), self.send_address)
-        if text != '' and self.reciever_ip.text().count('.') == 3:
+        if text != '' and self.ui.reciever_ip.text().count('.') == 3:
             encrypted = prepare_bytes_encrypt(dumps({'text': text}), self.pubkeys[self.send_address[0]])
             request = {'type': 'message', 'data': encrypted}
             self.sender_message(request)  # sending text
-            self.plainText.appendPlainText('Me >  ' + text)  # Show this message
-            self.lineEdit.setText('')
+            self.ui.plainText.appendPlainText('Me >  ' + text)  # Show this message
+            self.ui.lineEdit.setText('')
             self.message_id += 1
 
 
