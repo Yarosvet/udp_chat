@@ -42,12 +42,11 @@ class MyWidget(QMainWindow):
         self.message_id = 0
         self.temporary = {}
 
-        self.localIP = socket.gethostbyname(socket.getfqdn())
         self.ui.pushButton.clicked.connect(self.send_message)
         self.ui.pushButton_2.clicked.connect(self.change_socket)
         self.ui.reciever_ip.textChanged.connect(self.reconnect)
-        self.ui.local_ip.setText(self.localIP)
         self.ui.send_file.clicked.connect(self.file_sender)
+        self.ui.label_2.setText('Now your IP seems to be  ' + socket.gethostbyname(socket.getfqdn()))
 
         host = self.ui.reciever_ip.text()
         port = int(self.ui.port.text())
@@ -61,7 +60,7 @@ class MyWidget(QMainWindow):
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)  # Allow incoming broadcasts
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
         self.s.setblocking(False)  # Socket non-block
-        self.s.bind(self.send_address)  # Binding port
+        self.s.bind(('', self.send_address[1]))  # Binding port
 
     def file_sender(self):
         fname = QFileDialog.getOpenFileName(self, 'Выбрать файл', '')[0]
@@ -88,7 +87,7 @@ class MyWidget(QMainWindow):
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)  # Allow incoming broadcasts
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
         self.s.setblocking(False)  # Socket non-block
-        self.s.bind((self.ui.local_ip.text(), port))
+        self.s.bind(('', port))
 
     def sender_message(self, request):
         pieces = 5
