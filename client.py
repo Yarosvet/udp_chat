@@ -5,10 +5,8 @@ from pickle import loads, dumps
 import rsa
 # Qt
 from PyQt5 import uic
-from PyQt5.QtWidgets import QApplication, QMainWindow
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QFileDialog
-from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog
+from PyQt5.QtCore import Qt, QTimer
 
 
 def prepare_bytes_encrypt(bytes_list, public_key, piece=117):
@@ -59,7 +57,7 @@ class MyWidget(QMainWindow):
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)  # Allow incoming broadcasts
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
         self.s.setblocking(False)  # Socket non-block
-        self.s.bind(('', port))  # Binding port
+        self.s.bind(self.send_address)  # Binding port
 
     def file_sender(self):
         fname = QFileDialog.getOpenFileName(self, 'Выбрать файл', '')[0]
