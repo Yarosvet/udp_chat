@@ -54,6 +54,9 @@ class Ui_Window(object):
         self.reciever_ip = QtWidgets.QLineEdit(self.verticalLayoutWidget)
         self.reciever_ip.setObjectName("reciever_ip")
         self.horizontalLayout_5.addWidget(self.reciever_ip)
+        self.pushButton_3 = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        self.pushButton_3.setObjectName("pushButton_3")
+        self.horizontalLayout_5.addWidget(self.pushButton_3)
         self.verticalLayout.addLayout(self.horizontalLayout_5)
         self.label_2 = QtWidgets.QLabel(self.verticalLayoutWidget)
         self.label_2.setObjectName("label_2")
@@ -61,6 +64,7 @@ class Ui_Window(object):
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.send_file = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        self.send_file.setEnabled(False)
         self.send_file.setObjectName("send_file")
         self.horizontalLayout.addWidget(self.send_file)
         self.lineEdit = QtWidgets.QLineEdit(self.verticalLayoutWidget)
@@ -69,6 +73,7 @@ class Ui_Window(object):
         self.lineEdit.setObjectName("lineEdit")
         self.horizontalLayout.addWidget(self.lineEdit)
         self.pushButton = QtWidgets.QPushButton(self.verticalLayoutWidget)
+        self.pushButton.setEnabled(False)
         self.pushButton.setObjectName("pushButton")
         self.horizontalLayout.addWidget(self.pushButton)
         self.verticalLayout.addLayout(self.horizontalLayout)
@@ -92,16 +97,7 @@ class Ui_Window(object):
         self.port.setText(_translate("Window", "20001"))
         self.pushButton_2.setText(_translate("Window", "Save port"))
         self.label_4.setText(_translate("Window", "Reciever IP"))
+        self.pushButton_3.setText(_translate("Window", "CONNECT"))
         self.label_2.setText(_translate("Window", "Now your IP seems to be ..."))
         self.send_file.setText(_translate("Window", "Send file"))
         self.pushButton.setText(_translate("Window", "SEND"))
-
-
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    Window = QtWidgets.QMainWindow()
-    ui = Ui_Window()
-    ui.setupUi(Window)
-    Window.show()
-    sys.exit(app.exec_())

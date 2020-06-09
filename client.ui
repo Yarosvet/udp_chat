@@ -112,6 +112,13 @@
        <item>
         <widget class="QLineEdit" name="reciever_ip"/>
        </item>
+       <item>
+        <widget class="QPushButton" name="pushButton_3">
+         <property name="text">
+          <string>Connect</string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </item>
      <item>
@@ -125,6 +132,9 @@
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
         <widget class="QPushButton" name="send_file">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="text">
           <string>Send file</string>
          </property>
@@ -142,6 +152,9 @@
        </item>
        <item>
         <widget class="QPushButton" name="pushButton">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="text">
           <string>SEND</string>
          </property>
