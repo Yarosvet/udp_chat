@@ -25,7 +25,40 @@ def decrypt(crypted_list, privkey):
     return res
 
 
-class MyWidget(QMainWindow):
+class Backend:
+    def __init__(self, port):
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.s.setblocking(False)  # Socket non-block
+        self.s.bind(('', port))  # Binding port
+        self.s.listen(1)
+        self.conn = 0
+        self.message_id = 0
+        self.temporary = {}
+        self.connected = False
+        host = self.ui.reciever_ip.text()
+
+        (self.pubkey, self.privkey) = rsa.newkeys(1024)
+        self.pubkeys = {}
+
+        self.connect_address = ('', 20001)
+        # self.send_address = (host, port)  # Set the address
+
+    def file_sender(self, reciever_ip):
+        fname = QFileDialog.getOpenFileName(self, 'Выбрать файл', '')[0]
+        if fname != '' and reciever_ip.count('.') == 3:
+            self.send_request({'type': 'connect', 'data': {'pubkey': self.pubkey, 'need_for_answer': 'True'}})
+            f = open(fname, 'rb')
+            data = f.read()
+            f.close()
+            encrypted = encrypt(dumps({'file': data, 'file_name': fname}),
+                                self.pubkeys[reciever_ip])
+
+            self.send_request({'type': 'file', 'data': encrypted})
+            self.ui.plainText.appendPlainText('Me >  [File ' + fname + ']')
+            self.message_id += 1
+
+
+class Window(QMainWindow):
     def __init__(self):
         # Инициализация
         super().__init__()
@@ -37,29 +70,12 @@ class MyWidget(QMainWindow):
         timer.timeout.connect(self.main)
         timer.start()
 
-        self.message_id = 0
-        self.temporary = {}
-        self.connected = False
-
         self.ui.pushButton.clicked.connect(self.send_message)
         self.ui.pushButton_2.clicked.connect(self.change_socket)
         self.ui.pushButton_3.clicked.connect(self.connector)
         self.ui.send_file.clicked.connect(self.file_sender)
         self.ui.label_2.setText('Now your IP seems to be  ' + socket.gethostbyname(socket.getfqdn()))
-
-        host = self.ui.reciever_ip.text()
-        port = int(self.ui.port.text())
-
-        (self.pubkey, self.privkey) = rsa.newkeys(1024)
-        self.pubkeys = {}
-
-        self.connect_address = ('', 20001)
-        self.send_address = (host, port)  # Set the address
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.s.setblocking(False)  # Socket non-block
-        self.s.bind(('', port))  # Binding port
-        self.s.listen(1)
-        self.conn = 0
+        engine = Backend(port=int(self.ui.port.text()))
 
     def lock_ui(self):
         self.ui.port.setEnabled(False)
@@ -74,22 +90,6 @@ class MyWidget(QMainWindow):
         self.ui.send_file.setEnabled(False)
         self.ui.pushButton.setEnabled(False)
         self.ui.pushButton_3.setText('CONNECT')
-
-    def file_sender(self):
-        fname = QFileDialog.getOpenFileName(self, 'Выбрать файл', '')[0]
-        self.send_address = (self.ui.reciever_ip.text(), int(self.ui.port.text()))
-        if fname != '' and self.ui.reciever_ip.text().count('.') == 3:
-            request = {'type': 'connect', 'data': {'pubkey': self.pubkey, 'need_for_answer': 'True'}}
-            self.s.sendto(dumps(request), (self.ui.reciever_ip.text(), int(self.ui.port.text())))
-            f = open(fname, 'rb')
-            data = f.read()
-            f.close()
-            encrypted = encrypt(dumps({'file': data, 'file_name': fname}),
-                                self.pubkeys[self.send_address[0]])
-            request = {'type': 'file', 'data': encrypted}
-            self.send_request(request)
-            self.ui.plainText.appendPlainText('Me >  [File ' + fname + ']')
-            self.message_id += 1
 
     def change_socket(self):
         host = self.ui.reciever_ip.text()
@@ -196,6 +196,8 @@ class MyWidget(QMainWindow):
             if not self.connected:
                 self.conn, self.connect_address = self.s.accept()
             else:
+                print(self.conn)
+
                 message = self.conn.recv(1024)
                 self.message_handler(loads(message), self.connect_address)
         except BlockingIOError:
@@ -214,6 +216,6 @@ class MyWidget(QMainWindow):
 
 
 app = QApplication(sys.argv)
-ex = MyWidget()
+ex = Window()
 ex.show()
 sys.exit(app.exec_())
