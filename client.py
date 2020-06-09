@@ -118,12 +118,12 @@ class MyWidget(QMainWindow):
     def connector(self):
         if not self.connected:
             try:
+                self.connected = True
                 self.s.connect((self.ui.reciever_ip.text(), int(self.ui.port.text())))
                 send_address = (self.ui.reciever_ip.text(), int(self.ui.port.text()))
                 request = {'type': 'connect', 'data': {'pubkey': self.pubkey, 'need_for_answer': 'True'}}
                 self.s.sendto(dumps(request), send_address)
                 self.lock_ui()
-                self.connected = True
             except Exception as exc:
                 QMessageBox.critical(self, str(type(exc))[8:-2], 'Connection failed\n\n' + str(exc), QMessageBox.Ok)
                 self.unlock_ui()
@@ -199,7 +199,6 @@ class MyWidget(QMainWindow):
                 message = self.conn.recv(1024)
                 self.message_handler(loads(message), self.connect_address)
         except BlockingIOError:
-            print('no clients')
             pass
 
     def send_message(self):
