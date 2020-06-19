@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 import socket
 import sys
+import pathlib
 from pickle import loads, dumps
 import rsa
-# Qt
-# from PyQt5 import uic
 from ui import Ui_Window
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox
 from PyQt5.QtCore import Qt, QTimer
@@ -31,70 +30,33 @@ class Backend:
         self.s.setblocking(False)  # Socket non-block
         self.s.bind(('', port))  # Binding port
         self.s.listen(1)
+
         self.conn = 0
         self.message_id = 0
         self.temporary = {}
         self.connected = False
-        host = self.ui.reciever_ip.text()
 
         (self.pubkey, self.privkey) = rsa.newkeys(1024)
-        self.pubkeys = {}
+        self.connect_pubkey = None
+        self.port = port
+        self.connect_address = ()
 
-        self.connect_address = ('', 20001)
-        # self.send_address = (host, port)  # Set the address
-
-    def file_sender(self, reciever_ip):
-        fname = QFileDialog.getOpenFileName(self, 'Выбрать файл', '')[0]
-        if fname != '' and reciever_ip.count('.') == 3:
-            self.send_request({'type': 'connect', 'data': {'pubkey': self.pubkey, 'need_for_answer': 'True'}})
+    def file_sender(self, fname):
+        if fname != '':
             f = open(fname, 'rb')
             data = f.read()
             f.close()
-            encrypted = encrypt(dumps({'file': data, 'file_name': fname}),
-                                self.pubkeys[reciever_ip])
+            encrypted = encrypt(dumps({'file': data, 'file_name': pathlib.Path(fname).name}),
+                                self.connect_pubkey)
 
             self.send_request({'type': 'file', 'data': encrypted})
-            self.ui.plainText.appendPlainText('Me >  [File ' + fname + ']')
             self.message_id += 1
+            return 'Me >  [File ' + fname + ']'
 
+    def exchange_keys(self):
+        self.send_request({'type': 'connect', 'data': {'pubkey': self.pubkey}})
 
-class Window(QMainWindow):
-    def __init__(self):
-        # Инициализация
-        super().__init__()
-        self.ui = Ui_Window()
-        self.ui.setupUi(self)
-
-        timer = QTimer(self)
-        timer.setInterval(50)
-        timer.timeout.connect(self.main)
-        timer.start()
-
-        self.ui.pushButton.clicked.connect(self.send_message)
-        self.ui.pushButton_2.clicked.connect(self.change_socket)
-        self.ui.pushButton_3.clicked.connect(self.connector)
-        self.ui.send_file.clicked.connect(self.file_sender)
-        self.ui.label_2.setText('Now your IP seems to be  ' + socket.gethostbyname(socket.getfqdn()))
-        engine = Backend(port=int(self.ui.port.text()))
-
-    def lock_ui(self):
-        self.ui.port.setEnabled(False)
-        self.ui.pushButton_2.setEnabled(False)
-        self.ui.send_file.setEnabled(True)
-        self.ui.pushButton.setEnabled(True)
-        self.ui.pushButton_3.setText('DISCONNECT')
-
-    def unlock_ui(self):
-        self.ui.port.setEnabled(True)
-        self.ui.pushButton_2.setEnabled(True)
-        self.ui.send_file.setEnabled(False)
-        self.ui.pushButton.setEnabled(False)
-        self.ui.pushButton_3.setText('CONNECT')
-
-    def change_socket(self):
-        host = self.ui.reciever_ip.text()
-        port = int(self.ui.port.text())
-        self.send_address = (host, port)  # Set the address
+    def change_socket(self, port: int):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.setblocking(False)  # Socket non-block
         self.s.bind(('', port))  # Binding port
@@ -115,26 +77,24 @@ class Window(QMainWindow):
             packet['data'] = data[pieces * i: pieces * (i + 1)]
             self.s.send(dumps(packet))
 
-    def connector(self):
+    def connect(self, ip):
         if not self.connected:
             try:
                 self.connected = True
-                self.s.connect((self.ui.reciever_ip.text(), int(self.ui.port.text())))
-                send_address = (self.ui.reciever_ip.text(), int(self.ui.port.text()))
-                request = {'type': 'connect', 'data': {'pubkey': self.pubkey, 'need_for_answer': 'True'}}
-                self.s.sendto(dumps(request), send_address)
-                self.lock_ui()
+                self.connect_address = (ip, self.port)
+                self.s.connect(self.connect_address)
+                self.exchange_keys()
+                return 0
             except Exception as exc:
-                QMessageBox.critical(self, str(type(exc))[8:-2], 'Connection failed\n\n' + str(exc), QMessageBox.Ok)
-                self.unlock_ui()
+                self.connect_address = ()
+                # QMessageBox.critical(self, str(type(exc))[8:-2], 'Connection failed\n\n' + str(exc), QMessageBox.Ok)
                 self.connected = False
+                self.unlock_ui()
+                return 'Connection failed\n\n' + str(exc)
         else:
             self.s.close()
-
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Enter - 1 and self.ui.reciever_ip.text().count(
-                '.') == 3 and self.ui.pushButton.isEnabled():
-            self.send_message()
+            self.connected = False
+            self.connect(ip=ip)
 
     def message_handler(self, request, address):
         if request['type'] == 'message':
@@ -156,15 +116,11 @@ class Window(QMainWindow):
                 data = loads(decrypt(data, self.privkey))
                 self.temporary[address[0]][request['request_id']] = []
                 text = data['text']
-                self.ui.plainText.appendPlainText(address[0] + ':' + str(address[1]) + ' >  ' + text)
+                # self.ui.plainText.appendPlainText(address[0] + ':' + str(address[1]) + ' >  ' + text)
+                return address[0] + ':' + str(address[1]) + ' >  ' + text
 
         elif request['type'] == 'connect':
-            if address[0] == '127.0.0.1':
-                self.pubkeys['127.0.1.1'] = request['data']['pubkey']
-            self.pubkeys[address[0]] = request['data']['pubkey']
-            if request['data']['need_for_answer'] == 'True':
-                request = {'type': 'connect', 'data': {'pubkey': self.pubkey, 'need_for_answer': 'False'}}
-                self.s.send(dumps(request))
+            self.connect_pubkey = request['data']['pubkey']
 
         elif request['type'] == 'file':
             request_id = request['request_id']
@@ -191,7 +147,7 @@ class Window(QMainWindow):
                     f.close()
                     self.ui.plainText.appendPlainText(address[0] + ':' + address[1] + ' >  [File ' + fname + ']')
 
-    def main(self):
+    def reciever(self):
         try:
             if not self.connected:
                 self.conn, self.connect_address = self.s.accept()
@@ -203,16 +159,68 @@ class Window(QMainWindow):
         except BlockingIOError:
             pass
 
-    def send_message(self):
-        self.send_address = (self.ui.reciever_ip.text(), int(self.ui.port.text()))
-        text = str(self.ui.lineEdit.text())
-        if text != '' and self.ui.reciever_ip.text().count('.') == 3:
-            encrypted = encrypt(dumps({'text': text}), self.pubkeys[self.send_address[0]])
+    def send_message(self, text):
+        if text != '':
+            encrypted = encrypt(dumps({'text': text}), self.connect_pubkey)
             request = {'type': 'message', 'data': encrypted}
             self.send_request(request)  # sending text
-            self.ui.plainText.appendPlainText('Me >  ' + text)  # Show this message
-            self.ui.lineEdit.setText('')
             self.message_id += 1
+            return 'Me >  ' + text
+
+
+class Window(QMainWindow):
+    def __init__(self):
+        # Инициализация
+        super().__init__()
+        self.ui = Ui_Window()
+        self.ui.setupUi(self)
+
+        self.engine = Backend(port=int(self.ui.port.text()))
+
+        timer = QTimer(self)
+        timer.setInterval(50)
+        timer.timeout.connect(self.engine.reciever)
+        timer.start()
+
+        self.ui.pushButton.clicked.connect(self.send_message)
+        self.ui.pushButton_2.clicked.connect(self.change_socket)
+        self.ui.pushButton_3.clicked.connect(self.connect)
+        self.ui.send_file.clicked.connect(self.send_file)
+        self.ui.label_2.setText('Now your IP seems to be  ' + socket.gethostbyname(socket.getfqdn()))
+
+    def send_message(self):
+        text = self.engine.send_message(self.ui.lineEdit.text())
+        self.ui.plainText.appendPlainText(text)
+        self.ui.lineEdit.setText('')
+
+    def send_file(self):
+        text = self.engine.file_sender(QFileDialog.getOpenFileName(self, 'Выбрать файл', '')[0])
+        self.ui.plainText.appendPlainText(text)
+
+    def connect(self):
+        self.engine.connect(self.ui.reciever_ip.text())
+
+    def change_socket(self):
+        self.engine.change_socket(self.ui.port.text())
+
+    def lock_ui(self):
+        self.ui.port.setEnabled(False)
+        self.ui.pushButton_2.setEnabled(False)
+        self.ui.send_file.setEnabled(True)
+        self.ui.pushButton.setEnabled(True)
+        self.ui.pushButton_3.setText('DISCONNECT')
+
+    def unlock_ui(self):
+        self.ui.port.setEnabled(True)
+        self.ui.pushButton_2.setEnabled(True)
+        self.ui.send_file.setEnabled(False)
+        self.ui.pushButton.setEnabled(False)
+        self.ui.pushButton_3.setText('CONNECT')
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Enter - 1 and self.ui.reciever_ip.text().count(
+                '.') == 3 and self.ui.pushButton.isEnabled():
+            self.send_message()
 
 
 app = QApplication(sys.argv)
